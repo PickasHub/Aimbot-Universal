@@ -1,0 +1,2278 @@
+-- PICKA'S HUB - FULL REPLACEMENT
+-- Roblox Studio / LocalScript
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+--==================================================
+-- CLEAN OLD GUI
+--==================================================
+
+local OldGui = PlayerGui:FindFirstChild("PICKAS_HUB")
+if OldGui then
+    OldGui:Destroy()
+end
+
+local OldFOV = PlayerGui:FindFirstChild("PICKA_FOV")
+if OldFOV then
+    OldFOV:Destroy()
+end
+
+local OldCrosshair = PlayerGui:FindFirstChild("PICKA_CROSSHAIR")
+if OldCrosshair then
+    OldCrosshair:Destroy()
+end
+
+local OldLogo = PlayerGui:FindFirstChild("PICKA_FLOATING_LOGO")
+if OldLogo then
+    OldLogo:Destroy()
+end
+
+--==================================================
+-- SETTINGS
+--==================================================
+
+local ThemeColor = Color3.fromRGB(170, 70, 255)
+local DarkColor = Color3.fromRGB(18, 18, 24)
+local PanelColor = Color3.fromRGB(25, 25, 34)
+local ButtonColor = Color3.fromRGB(32, 32, 43)
+local TextColor = Color3.fromRGB(235, 235, 240)
+
+local AimbotEnabled = false
+local SilentAimEnabled = false
+local TeamCheckEnabled = true
+local TargetSnaplineEnabled = false
+local AimKeybindEnabled = false
+local AimSmoothness = 8
+
+local FOVEnabled = false
+local FOVRadius = 120
+local FOVMousePosition = false
+
+local CrosshairEnabled = false
+
+local NoRecoilEnabled = false
+local RapidFireEnabled = false
+local FireRateMultiplier = 1
+
+local SpeedEnabled = false
+local WalkSpeed = 16
+
+local InfiniteJumpEnabled = false
+local NoClipEnabled = false
+local InvisibleEnabled = false
+
+local Flying = false
+local FlySpeed = 60
+
+local HealthESPEnabled = false
+
+local GravityEnabled = false
+local GravityValue = 196.2
+
+local CustomFOVEnabled = false
+local CustomFOV = 70
+
+--==================================================
+-- CHARACTER
+--==================================================
+
+local Character
+local Humanoid
+local Root
+local Animator
+
+local function SetupCharacter(char)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid", 5)
+    Root = char:WaitForChild("HumanoidRootPart", 5)
+    Animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
+end
+
+if LocalPlayer.Character then
+    SetupCharacter(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    SetupCharacter(char)
+
+    task.wait(0.5)
+
+    if SpeedEnabled and Humanoid then
+        Humanoid.WalkSpeed = WalkSpeed
+    end
+
+    if Flying then
+        Flying = false
+    end
+end)
+
+--==================================================
+-- MAIN GUI
+--==================================================
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PICKAS_HUB"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+--==================================================
+-- MAIN WINDOW
+--==================================================
+
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+Main.Size = UDim2.fromOffset(350, 400)
+Main.BackgroundColor3 = DarkColor
+Main.BorderSizePixel = 0
+Main.ClipsDescendants = true
+Main.ZIndex = 10
+Main.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = Main
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = ThemeColor
+MainStroke.Thickness = 1.5
+MainStroke.Transparency = 0.15
+MainStroke.Parent = Main
+
+--==================================================
+-- TITLE BAR
+--==================================================
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 42)
+TitleBar.BackgroundColor3 = PanelColor
+TitleBar.BorderSizePixel = 0
+TitleBar.ZIndex = 11
+TitleBar.Parent = Main
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.fromOffset(12, 0)
+Title.Size = UDim2.new(1, -48, 1, 0)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "PICKA'S HUB | DC : discord.gg/BuWsUVTnt"
+Title.TextColor3 = TextColor
+Title.TextSize = 12
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.TextTruncate = Enum.TextTruncate.AtEnd
+Title.ZIndex = 12
+Title.Parent = TitleBar
+
+local Close = Instance.new("TextButton")
+Close.Name = "Close"
+Close.AnchorPoint = Vector2.new(1, 0.5)
+Close.Position = UDim2.new(1, -8, 0.5, 0)
+Close.Size = UDim2.fromOffset(26, 26)
+Close.BackgroundColor3 = ButtonColor
+Close.BorderSizePixel = 0
+Close.Text = "X"
+Close.TextColor3 = TextColor
+Close.TextSize = 12
+Close.Font = Enum.Font.GothamBold
+Close.AutoButtonColor = false
+Close.ZIndex = 13
+Close.Parent = TitleBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = Close
+
+--==================================================
+-- TAB BAR
+--==================================================
+
+local TabBar = Instance.new("Frame")
+TabBar.Name = "TabBar"
+TabBar.Position = UDim2.fromOffset(8, 48)
+TabBar.Size = UDim2.new(1, -16, 0, 32)
+TabBar.BackgroundTransparency = 1
+TabBar.ZIndex = 11
+TabBar.Parent = Main
+
+local TabLayout = Instance.new("UIListLayout")
+TabLayout.FillDirection = Enum.FillDirection.Horizontal
+TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+TabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+TabLayout.Padding = UDim.new(0, 5)
+TabLayout.Parent = TabBar
+
+--==================================================
+-- CONTENT
+--==================================================
+
+local Content = Instance.new("Frame")
+Content.Name = "Content"
+Content.Position = UDim2.fromOffset(8, 86)
+Content.Size = UDim2.new(1, -16, 1, -94)
+Content.BackgroundTransparency = 1
+Content.ZIndex = 10
+Content.Parent = Main
+
+--==================================================
+-- DRAG MAIN WINDOW
+--==================================================
+
+local Dragging = false
+local DragStart
+local StartPosition
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        Dragging = true
+        DragStart = input.Position
+        StartPosition = Main.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                Dragging = false
+            end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not Dragging then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        local Delta = input.Position - DragStart
+
+        Main.Position = UDim2.new(
+            StartPosition.X.Scale,
+            StartPosition.X.Offset + Delta.X,
+            StartPosition.Y.Scale,
+            StartPosition.Y.Offset + Delta.Y
+        )
+    end
+end)
+
+--==================================================
+-- RESIZE HANDLE
+--==================================================
+
+local ResizeHandle = Instance.new("Frame")
+ResizeHandle.Name = "ResizeHandle"
+ResizeHandle.AnchorPoint = Vector2.new(1, 1)
+ResizeHandle.Position = UDim2.new(1, -4, 1, -4)
+ResizeHandle.Size = UDim2.fromOffset(22, 22)
+ResizeHandle.BackgroundTransparency = 1
+ResizeHandle.ZIndex = 30
+ResizeHandle.Parent = Main
+
+for i = 1, 3 do
+    local Line = Instance.new("Frame")
+    Line.BorderSizePixel = 0
+    Line.BackgroundColor3 = ThemeColor
+    Line.Size = UDim2.fromOffset(2, 8)
+    Line.Position = UDim2.new(1, -(i * 5), 1, -4)
+    Line.Rotation = -45
+    Line.AnchorPoint = Vector2.new(0.5, 0.5)
+    Line.ZIndex = 31
+    Line.Parent = ResizeHandle
+end
+
+local Resizing = false
+local ResizeStart
+local ResizeStartSize
+local ResizeStartPosition
+
+local function GetViewport()
+    local Camera = workspace.CurrentCamera
+
+    if Camera then
+        return Camera.ViewportSize
+    end
+
+    return Vector2.new(800, 600)
+end
+
+local function ClampWindowSize(width, height)
+    local Viewport = GetViewport()
+
+    local MinWidth = 300
+    local MinHeight = 300
+
+    local MaxWidth = math.max(
+        MinWidth,
+        math.min(520, Viewport.X - 20)
+    )
+
+    local MaxHeight = math.max(
+        MinHeight,
+        math.min(620, Viewport.Y - 20)
+    )
+
+    return
+        math.clamp(width, MinWidth, MaxWidth),
+        math.clamp(height, MinHeight, MaxHeight)
+end
+
+ResizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        Resizing = true
+        ResizeStart = input.Position
+        ResizeStartSize = Main.AbsoluteSize
+        ResizeStartPosition = Main.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                Resizing = false
+            end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not Resizing then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        local Delta = input.Position - ResizeStart
+
+        local NewWidth = ResizeStartSize.X + Delta.X
+        local NewHeight = ResizeStartSize.Y + Delta.Y
+
+        NewWidth, NewHeight = ClampWindowSize(
+            NewWidth,
+            NewHeight
+        )
+
+        local WidthDifference =
+            NewWidth - ResizeStartSize.X
+
+        local HeightDifference =
+            NewHeight - ResizeStartSize.Y
+
+        Main.Size = UDim2.fromOffset(
+            NewWidth,
+            NewHeight
+        )
+
+        Main.Position = UDim2.new(
+            ResizeStartPosition.X.Scale,
+            ResizeStartPosition.X.Offset + WidthDifference / 2,
+            ResizeStartPosition.Y.Scale,
+            ResizeStartPosition.Y.Offset + HeightDifference / 2
+        )
+    end
+end)
+
+--==================================================
+-- FLOATING LOGO
+--==================================================
+
+local LogoGui = Instance.new("ScreenGui")
+LogoGui.Name = "PICKA_FLOATING_LOGO"
+LogoGui.ResetOnSpawn = false
+LogoGui.IgnoreGuiInset = true
+LogoGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+LogoGui.DisplayOrder = 50
+LogoGui.Parent = PlayerGui
+
+local FloatingLogo = Instance.new("ImageButton")
+FloatingLogo.Name = "FloatingLogo"
+FloatingLogo.Size = UDim2.fromOffset(58, 58)
+FloatingLogo.Position = UDim2.new(0, 18, 0.5, -29)
+FloatingLogo.BackgroundColor3 = DarkColor
+FloatingLogo.BorderSizePixel = 0
+FloatingLogo.Image = "rbxassetid://108565862230363"
+FloatingLogo.ScaleType = Enum.ScaleType.Fit
+FloatingLogo.AutoButtonColor = false
+FloatingLogo.ZIndex = 50
+FloatingLogo.Parent = LogoGui
+
+local LogoCorner = Instance.new("UICorner")
+LogoCorner.CornerRadius = UDim.new(1, 0)
+LogoCorner.Parent = FloatingLogo
+
+local LogoStroke = Instance.new("UIStroke")
+LogoStroke.Color = ThemeColor
+LogoStroke.Thickness = 2
+LogoStroke.Parent = FloatingLogo
+
+local LogoDragging = false
+local LogoDragged = false
+local LogoDragStart
+local LogoStartPosition
+
+FloatingLogo.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        LogoDragging = true
+        LogoDragged = false
+        LogoDragStart = input.Position
+        LogoStartPosition = FloatingLogo.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                LogoDragging = false
+
+                if not LogoDragged then
+                    Main.Visible = not Main.Visible
+
+                    if not Main.Visible then
+                        if FOVCircle then
+                            FOVCircle.Visible = false
+                        end
+                    elseif FOVEnabled then
+                        FOVCircle.Visible = true
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not LogoDragging then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        local Delta = input.Position - LogoDragStart
+
+        if Delta.Magnitude > 6 then
+            LogoDragged = true
+        end
+
+        local Viewport = GetViewport()
+
+        local NewX =
+            LogoStartPosition.X.Offset + Delta.X
+
+        local NewY =
+            LogoStartPosition.Y.Offset + Delta.Y
+
+        NewX = math.clamp(
+            NewX,
+            0,
+            math.max(
+                0,
+                Viewport.X - FloatingLogo.AbsoluteSize.X
+            )
+        )
+
+        NewY = math.clamp(
+            NewY,
+            0,
+            math.max(
+                0,
+                Viewport.Y - FloatingLogo.AbsoluteSize.Y
+            )
+        )
+
+        FloatingLogo.Position = UDim2.fromOffset(
+            NewX,
+            NewY
+        )
+    end
+end)
+
+--==================================================
+-- BUTTON / TAB HELPERS
+--==================================================
+
+local Tabs = {}
+local TabButtons = {}
+
+local function CreateTab(Name)
+    local Button = Instance.new("TextButton")
+    Button.Name = Name
+    Button.Size = UDim2.fromOffset(75, 30)
+    Button.BackgroundColor3 = ButtonColor
+    Button.BorderSizePixel = 0
+    Button.Text = Name
+    Button.TextColor3 = TextColor
+    Button.TextSize = 10
+    Button.Font = Enum.Font.GothamBold
+    Button.AutoButtonColor = false
+    Button.ZIndex = 12
+    Button.Parent = TabBar
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Button
+
+    local Page = Instance.new("ScrollingFrame")
+    Page.Name = Name .. "_Page"
+    Page.Size = UDim2.fromScale(1, 1)
+    Page.BackgroundTransparency = 1
+    Page.BorderSizePixel = 0
+    Page.ScrollBarThickness = 3
+    Page.ScrollBarImageColor3 = ThemeColor
+    Page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Page.Visible = false
+    Page.ZIndex = 11
+    Page.Parent = Content
+
+    local Layout = Instance.new("UIListLayout")
+    Layout.Padding = UDim.new(0, 6)
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Layout.Parent = Page
+
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingBottom = UDim.new(0, 10)
+    Padding.PaddingLeft = UDim.new(0, 2)
+    Padding.PaddingRight = UDim.new(0, 2)
+    Padding.Parent = Page
+
+    Tabs[Name] = Page
+    TabButtons[Name] = Button
+
+    Button.MouseButton1Click:Connect(function()
+        for TabName, TabPage in pairs(Tabs) do
+            TabPage.Visible = TabName == Name
+
+            if TabName == Name then
+                TabButtons[TabName].BackgroundColor3 = ThemeColor
+            else
+                TabButtons[TabName].BackgroundColor3 = ButtonColor
+            end
+        end
+    end)
+
+    return Page
+end
+
+local CombatPage = CreateTab("COMBAT")
+local RagePage = CreateTab("RAGE")
+local LocalPage = CreateTab("LOCAL PLAYER")
+local MiscPage = CreateTab("MISC")
+
+--==================================================
+-- CONTROL HELPERS
+--==================================================
+
+local function CreateToggle(Parent, Name, Default, Callback)
+    local Button = Instance.new("TextButton")
+
+    Button.Size = UDim2.new(1, -4, 0, 34)
+    Button.BackgroundColor3 = ButtonColor
+    Button.BorderSizePixel = 0
+    Button.Text = Name .. " : " .. (Default and "ON" or "OFF")
+    Button.TextColor3 = TextColor
+    Button.TextSize = 11
+    Button.Font = Enum.Font.GothamSemibold
+    Button.AutoButtonColor = false
+    Button.ZIndex = 12
+    Button.Parent = Parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Button
+
+    local State = Default
+
+    local function Refresh()
+        Button.Text =
+            Name .. " : " .. (State and "ON" or "OFF")
+
+        if State then
+            Button.BackgroundColor3 = ThemeColor
+        else
+            Button.BackgroundColor3 = ButtonColor
+        end
+    end
+
+    Button.MouseButton1Click:Connect(function()
+        State = not State
+
+        Refresh()
+
+        if Callback then
+            Callback(State)
+        end
+    end)
+
+    Refresh()
+
+    return Button, function()
+        return State
+    end
+end
+
+local function CreateSlider(
+    Parent,
+    Name,
+    Min,
+    Max,
+    Default,
+    Callback
+)
+    local Holder = Instance.new("Frame")
+
+    Holder.Size = UDim2.new(1, -4, 0, 52)
+    Holder.BackgroundColor3 = ButtonColor
+    Holder.BorderSizePixel = 0
+    Holder.ZIndex = 12
+    Holder.Parent = Parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Holder
+
+    local Label = Instance.new("TextLabel")
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.fromOffset(10, 3)
+    Label.Size = UDim2.new(1, -20, 0, 20)
+    Label.Text = Name .. ": " .. tostring(Default)
+    Label.TextColor3 = TextColor
+    Label.TextSize = 10
+    Label.Font = Enum.Font.GothamSemibold
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.ZIndex = 13
+    Label.Parent = Holder
+
+    local Bar = Instance.new("Frame")
+    Bar.Position = UDim2.new(0, 10, 0, 31)
+    Bar.Size = UDim2.new(1, -20, 0, 4)
+    Bar.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    Bar.BorderSizePixel = 0
+    Bar.ZIndex = 13
+    Bar.Parent = Holder
+
+    local BarCorner = Instance.new("UICorner")
+    BarCorner.CornerRadius = UDim.new(1, 0)
+    BarCorner.Parent = Bar
+
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new(0, 0, 1, 0)
+    Fill.BackgroundColor3 = ThemeColor
+    Fill.BorderSizePixel = 0
+    Fill.ZIndex = 14
+    Fill.Parent = Bar
+
+    local FillCorner = Instance.new("UICorner")
+    FillCorner.CornerRadius = UDim.new(1, 0)
+    FillCorner.Parent = Fill
+
+    local Dot = Instance.new("Frame")
+    Dot.AnchorPoint = Vector2.new(0.5, 0.5)
+    Dot.Size = UDim2.fromOffset(10, 10)
+    Dot.BackgroundColor3 = ThemeColor
+    Dot.BorderSizePixel = 0
+    Dot.ZIndex = 15
+    Dot.Parent = Bar
+
+    local DotCorner = Instance.new("UICorner")
+    DotCorner.CornerRadius = UDim.new(1, 0)
+    DotCorner.Parent = Dot
+
+    local Value = Default
+    local Sliding = false
+
+    local function SetValueFromX(X)
+        local BarWidth = Bar.AbsoluteSize.X
+
+        if BarWidth <= 0 then
+            return
+        end
+
+        local Relative =
+            math.clamp(
+                X - Bar.AbsolutePosition.X,
+                0,
+                BarWidth
+            )
+
+        local Percent =
+            Relative / BarWidth
+
+        Value =
+            math.floor(
+                Min
+                + ((Max - Min) * Percent)
+                + 0.5
+            )
+
+        local Normalized =
+            (Value - Min) / (Max - Min)
+
+        Fill.Size = UDim2.new(
+            Normalized,
+            0,
+            1,
+            0
+        )
+
+        Dot.Position = UDim2.new(
+            Normalized,
+            0,
+            0.5,
+            0
+        )
+
+        Label.Text =
+            Name .. ": " .. tostring(Value)
+
+        if Callback then
+            Callback(Value)
+        end
+    end
+
+    Bar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            Sliding = true
+            SetValueFromX(input.Position.X)
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if not Sliding then
+            return
+        end
+
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            SetValueFromX(input.Position.X)
+        end
+    end)
+
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            Sliding = false
+        end
+    end)
+
+    task.defer(function()
+        local Normalized =
+            (Default - Min) / (Max - Min)
+
+        Fill.Size = UDim2.new(
+            Normalized,
+            0,
+            1,
+            0
+        )
+
+        Dot.Position = UDim2.new(
+            Normalized,
+            0,
+            0.5,
+            0
+        )
+    end)
+
+    return Holder, function()
+        return Value
+    end
+end
+
+local function CreateLabel(Parent, Text)
+    local Label = Instance.new("TextLabel")
+
+    Label.Size = UDim2.new(1, -4, 0, 26)
+    Label.BackgroundTransparency = 1
+    Label.Text = Text
+    Label.TextColor3 = ThemeColor
+    Label.TextSize = 11
+    Label.Font = Enum.Font.GothamBold
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.ZIndex = 12
+    Label.Parent = Parent
+
+    return Label
+end
+
+--==================================================
+-- CROSSHAIR
+--==================================================
+
+local CrosshairGui = Instance.new("ScreenGui")
+CrosshairGui.Name = "PICKA_CROSSHAIR"
+CrosshairGui.ResetOnSpawn = false
+CrosshairGui.IgnoreGuiInset = true
+CrosshairGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+CrosshairGui.DisplayOrder = 100
+CrosshairGui.Parent = PlayerGui
+
+local Crosshair = Instance.new("TextLabel")
+Crosshair.Name = "Plus"
+Crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+Crosshair.Position = UDim2.fromScale(0.5, 0.5)
+Crosshair.Size = UDim2.fromOffset(32, 32)
+Crosshair.BackgroundTransparency = 1
+Crosshair.BorderSizePixel = 0
+Crosshair.Text = "+"
+Crosshair.TextColor3 = ThemeColor
+Crosshair.TextSize = 28
+Crosshair.Font = Enum.Font.GothamBold
+Crosshair.TextXAlignment = Enum.TextXAlignment.Center
+Crosshair.TextYAlignment = Enum.TextYAlignment.Center
+Crosshair.Visible = false
+Crosshair.ZIndex = 100
+Crosshair.Parent = CrosshairGui
+
+--==================================================
+-- FOV CIRCLE
+--==================================================
+
+local FOVGui = Instance.new("ScreenGui")
+FOVGui.Name = "PICKA_FOV"
+FOVGui.ResetOnSpawn = false
+FOVGui.IgnoreGuiInset = true
+FOVGui.DisplayOrder = 5
+FOVGui.Parent = PlayerGui
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.BorderSizePixel = 0
+FOVCircle.Visible = false
+FOVCircle.ZIndex = 5
+FOVCircle.Parent = FOVGui
+
+local FOVCorner = Instance.new("UICorner")
+FOVCorner.CornerRadius = UDim.new(1, 0)
+FOVCorner.Parent = FOVCircle
+
+local FOVStroke = Instance.new("UIStroke")
+FOVStroke.Thickness = 2
+FOVStroke.Transparency = 0.05
+FOVStroke.Color = ThemeColor
+FOVStroke.Parent = FOVCircle
+
+local function GetAimCenter(Camera)
+    if FOVMousePosition then
+        return UIS:GetMouseLocation()
+    end
+
+    local Viewport = Camera.ViewportSize
+
+    return Vector2.new(
+        Viewport.X / 2,
+        Viewport.Y / 2
+    )
+end
+
+local function UpdateFOVCircle()
+    if not FOVEnabled then
+        FOVCircle.Visible = false
+        return
+    end
+
+    FOVCircle.Visible = true
+
+    FOVCircle.Size = UDim2.fromOffset(
+        FOVRadius * 2,
+        FOVRadius * 2
+    )
+
+    local Camera = workspace.CurrentCamera
+
+    if not Camera then
+        return
+    end
+
+    local Center = GetAimCenter(Camera)
+
+    FOVCircle.Position = UDim2.fromOffset(
+        Center.X,
+        Center.Y
+    )
+end
+
+RunService.RenderStepped:Connect(function()
+    if FOVEnabled then
+        UpdateFOVCircle()
+    end
+end)
+
+--==================================================
+-- AIM ASSIST
+--==================================================
+
+local function IsAlive(Player)
+    local Char = Player.Character
+
+    if not Char then
+        return false
+    end
+
+    local Hum =
+        Char:FindFirstChildOfClass("Humanoid")
+
+    return Hum and Hum.Health > 0
+end
+
+local function IsEnemy(Player)
+    if Player == LocalPlayer then
+        return false
+    end
+
+    if not TeamCheckEnabled then
+        return true
+    end
+
+    if LocalPlayer.Team == nil then
+        return true
+    end
+
+    return Player.Team ~= LocalPlayer.Team
+end
+
+local function GetClosestTarget()
+    local Camera = workspace.CurrentCamera
+
+    if not Camera then
+        return nil
+    end
+
+    local Center = GetAimCenter(Camera)
+
+    local Closest = nil
+    local ClosestDistance = FOVRadius
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if IsEnemy(Player) and IsAlive(Player) then
+
+            local Char = Player.Character
+
+            local AimPart =
+                Char and (
+                    Char:FindFirstChild("Head")
+                    or Char:FindFirstChild("HumanoidRootPart")
+                )
+
+            if AimPart then
+                local ScreenPos, Visible =
+                    Camera:WorldToViewportPoint(
+                        AimPart.Position
+                    )
+
+                if Visible and ScreenPos.Z > 0 then
+
+                    local Distance =
+                        (
+                            Vector2.new(
+                                ScreenPos.X,
+                                ScreenPos.Y
+                            ) - Center
+                        ).Magnitude
+
+                    if Distance <= ClosestDistance then
+                        ClosestDistance = Distance
+                        Closest = Player
+                    end
+                end
+            end
+        end
+    end
+
+    return Closest
+end
+
+local AIM_BIND_NAME = "PICKA_AimAssist"
+
+local function StartAimAssist()
+    pcall(function()
+        RunService:UnbindFromRenderStep(
+            AIM_BIND_NAME
+        )
+    end)
+
+    RunService:BindToRenderStep(
+        AIM_BIND_NAME,
+        Enum.RenderPriority.Camera.Value + 1,
+        function()
+
+            if not AimbotEnabled then
+                return
+            end
+
+            local Camera = workspace.CurrentCamera
+
+            if not Camera then
+                return
+            end
+
+            local Target = GetClosestTarget()
+
+            if not Target then
+                return
+            end
+
+            local Char = Target.Character
+
+            local TargetPart =
+                Char and (
+                    Char:FindFirstChild("Head")
+                    or Char:FindFirstChild("HumanoidRootPart")
+                )
+
+            if not TargetPart then
+                return
+            end
+
+            local DesiredCFrame =
+                CFrame.lookAt(
+                    Camera.CFrame.Position,
+                    TargetPart.Position
+                )
+
+            local Alpha =
+                math.clamp(
+                    1 / math.max(AimSmoothness, 1),
+                    0.02,
+                    1
+                )
+
+            Camera.CFrame =
+                Camera.CFrame:Lerp(
+                    DesiredCFrame,
+                    Alpha
+                )
+        end
+    )
+end
+
+local function StopAimAssist()
+    pcall(function()
+        RunService:UnbindFromRenderStep(
+            AIM_BIND_NAME
+        )
+    end)
+end
+
+StartAimAssist()
+
+--==================================================
+-- COMBAT TAB
+--==================================================
+
+CreateLabel(CombatPage, "AIM")
+
+CreateToggle(
+    CombatPage,
+    "AIM ASSIST",
+    false,
+    function(Value)
+        AimbotEnabled = Value
+    end
+)
+
+CreateToggle(
+    CombatPage,
+    "SILENT AIM",
+    false,
+    function(Value)
+        SilentAimEnabled = Value
+    end
+)
+
+CreateToggle(
+    CombatPage,
+    "AIM KEYBIND",
+    false,
+    function(Value)
+        AimKeybindEnabled = Value
+    end
+)
+
+CreateToggle(
+    CombatPage,
+    "TEAM CHECK",
+    true,
+    function(Value)
+        TeamCheckEnabled = Value
+    end
+)
+
+CreateToggle(
+    CombatPage,
+    "TARGET SNAPLINE",
+    false,
+    function(Value)
+        TargetSnaplineEnabled = Value
+    end
+)
+
+CreateSlider(
+    CombatPage,
+    "SMOOTHNESS",
+    1,
+    20,
+    8,
+    function(Value)
+        AimSmoothness = Value
+    end
+)
+
+CreateToggle(
+    CombatPage,
+    "FOV CIRCLE",
+    false,
+    function(Value)
+        FOVEnabled = Value
+        UpdateFOVCircle()
+    end
+)
+
+CreateSlider(
+    CombatPage,
+    "FOV RADIUS",
+    30,
+    500,
+    120,
+    function(Value)
+        FOVRadius = Value
+        UpdateFOVCircle()
+    end
+)
+
+CreateToggle(
+    CombatPage,
+    "FOV POSITION MOUSE",
+    false,
+    function(Value)
+        FOVMousePosition = Value
+        UpdateFOVCircle()
+    end
+)
+
+CreateToggle(
+    CombatPage,
+    "CROSSHAIR",
+    false,
+    function(Value)
+        CrosshairEnabled = Value
+        Crosshair.Visible = Value
+    end
+)
+
+--==================================================
+-- RAGE TAB
+--==================================================
+
+CreateLabel(RagePage, "WEAPON")
+
+CreateToggle(
+    RagePage,
+    "NO RECOIL",
+    false,
+    function(Value)
+        NoRecoilEnabled = Value
+    end
+)
+
+CreateToggle(
+    RagePage,
+    "RAPID FIRE",
+    false,
+    function(Value)
+        RapidFireEnabled = Value
+    end
+)
+
+CreateSlider(
+    RagePage,
+    "FIRE RATE MULTIPLIER",
+    1,
+    10,
+    1,
+    function(Value)
+        FireRateMultiplier = Value
+    end
+)
+
+--==================================================
+-- LOCAL PLAYER
+--==================================================
+
+CreateLabel(LocalPage, "MOVEMENT")
+
+local SpeedButton
+
+SpeedButton = CreateToggle(
+    LocalPage,
+    "WALKSPEED",
+    false,
+    function(Value)
+
+        SpeedEnabled = Value
+
+        if Humanoid then
+
+            if Value then
+                Humanoid.WalkSpeed = WalkSpeed
+            else
+                Humanoid.WalkSpeed = 16
+            end
+
+        end
+    end
+)
+
+CreateSlider(
+    LocalPage,
+    "WALK SPEED",
+    1,
+    200,
+    16,
+    function(Value)
+
+        WalkSpeed = Value
+
+        if SpeedEnabled and Humanoid then
+            Humanoid.WalkSpeed = WalkSpeed
+        end
+
+    end
+)
+
+CreateToggle(
+    LocalPage,
+    "INFINITE JUMP",
+    false,
+    function(Value)
+        InfiniteJumpEnabled = Value
+    end
+)
+
+CreateToggle(
+    LocalPage,
+    "NO CLIP",
+    false,
+    function(Value)
+        NoClipEnabled = Value
+    end
+)
+
+CreateToggle(
+    LocalPage,
+    "INVISIBLE",
+    false,
+    function(Value)
+        InvisibleEnabled = Value
+    end
+)
+
+--==================================================
+-- EXACT FLY SYSTEM
+--==================================================
+
+local SavedWalkSpeed = 16
+local SavedAutoRotate = true
+
+local FlyAttachment
+local FlyVelocity
+local FlyOrientation
+local FlyConnection
+
+local FlyButton
+
+local function RemoveFlyObjects()
+
+    if FlyConnection then
+        FlyConnection:Disconnect()
+        FlyConnection = nil
+    end
+
+    if FlyVelocity then
+        FlyVelocity:Destroy()
+        FlyVelocity = nil
+    end
+
+    if FlyOrientation then
+        FlyOrientation:Destroy()
+        FlyOrientation = nil
+    end
+
+    if FlyAttachment then
+        FlyAttachment:Destroy()
+        FlyAttachment = nil
+    end
+
+end
+
+local function StopFly()
+
+    Flying = false
+
+    RemoveFlyObjects()
+
+    if Humanoid then
+
+        Humanoid.AutoRotate =
+            SavedAutoRotate
+
+        if SpeedEnabled then
+            Humanoid.WalkSpeed =
+                WalkSpeed
+        else
+            Humanoid.WalkSpeed =
+                SavedWalkSpeed
+        end
+
+        Humanoid:ChangeState(
+            Enum.HumanoidStateType.GettingUp
+        )
+    end
+
+    if FlyButton then
+        FlyButton.Text = "FLY : OFF"
+        FlyButton.BackgroundColor3 =
+            ButtonColor
+    end
+
+end
+
+local function StartFly()
+
+    if not Character
+        or not Humanoid
+        or not Root then
+        return
+    end
+
+    RemoveFlyObjects()
+
+    Flying = true
+
+    SavedWalkSpeed =
+        Humanoid.WalkSpeed
+
+    SavedAutoRotate =
+        Humanoid.AutoRotate
+
+    Humanoid.AutoRotate = false
+
+    FlyAttachment =
+        Instance.new("Attachment")
+
+    FlyAttachment.Parent = Root
+
+    FlyVelocity =
+        Instance.new("LinearVelocity")
+
+    FlyVelocity.Attachment0 =
+        FlyAttachment
+
+    FlyVelocity.RelativeTo =
+        Enum.ActuatorRelativeTo.World
+
+    FlyVelocity.MaxForce =
+        math.huge
+
+    FlyVelocity.VectorVelocity =
+        Vector3.zero
+
+    FlyVelocity.Parent = Root
+
+    FlyOrientation =
+        Instance.new("AlignOrientation")
+
+    FlyOrientation.Attachment0 =
+        FlyAttachment
+
+    FlyOrientation.Mode =
+        Enum.OrientationAlignmentMode.OneAttachment
+
+    FlyOrientation.MaxTorque =
+        math.huge
+
+    FlyOrientation.Responsiveness =
+        20
+
+    FlyOrientation.Parent = Root
+
+    Humanoid:ChangeState(
+        Enum.HumanoidStateType.Physics
+    )
+
+    FlyConnection =
+        RunService.RenderStepped:Connect(
+            function()
+
+                if not Flying
+                    or not Humanoid
+                    or Humanoid.Health <= 0
+                    or not Root
+                    or not Root.Parent then
+                    return
+                end
+
+                local Camera =
+                    workspace.CurrentCamera
+
+                if not Camera then
+                    return
+                end
+
+                local MoveDirection =
+                    Humanoid.MoveDirection
+
+                if MoveDirection.Magnitude < 0.05 then
+                    FlyVelocity.VectorVelocity =
+                        Vector3.zero
+                    return
+                end
+
+                local CameraLook =
+                    Camera.CFrame.LookVector
+
+                local CameraRight =
+                    Camera.CFrame.RightVector
+
+                local Forward =
+                    Vector3.new(
+                        CameraLook.X,
+                        0,
+                        CameraLook.Z
+                    )
+
+                local Right =
+                    Vector3.new(
+                        CameraRight.X,
+                        0,
+                        CameraRight.Z
+                    )
+
+                if Forward.Magnitude > 0 then
+                    Forward = Forward.Unit
+                end
+
+                if Right.Magnitude > 0 then
+                    Right = Right.Unit
+                end
+
+                local ForwardAmount =
+                    MoveDirection:Dot(Forward)
+
+                local SideAmount =
+                    MoveDirection:Dot(Right)
+
+                local Direction =
+                    (CameraLook * ForwardAmount)
+                    + (Right * SideAmount)
+
+                if Direction.Magnitude > 0.01 then
+
+                    FlyVelocity.VectorVelocity =
+                        Direction.Unit * FlySpeed
+
+                else
+
+                    FlyVelocity.VectorVelocity =
+                        Vector3.zero
+
+                end
+
+                FlyOrientation.CFrame =
+                    CFrame.lookAt(
+                        Vector3.zero,
+                        CameraLook
+                    )
+
+            end
+        )
+end
+
+FlyButton = CreateToggle(
+    LocalPage,
+    "FLY",
+    false,
+    function(Value)
+
+        if Value then
+            StartFly()
+        else
+            StopFly()
+        end
+
+    end
+)
+
+CreateSlider(
+    LocalPage,
+    "FLY SPEED",
+    1,
+    1000,
+    60,
+    function(Value)
+        FlySpeed = Value
+    end
+)
+
+--==================================================
+-- NO CLIP
+--==================================================
+
+RunService.Stepped:Connect(function()
+
+    if not NoClipEnabled then
+        return
+    end
+
+    if not Character then
+        return
+    end
+
+    for _, Object in ipairs(
+        Character:GetDescendants()
+    ) do
+
+        if Object:IsA("BasePart") then
+            Object.CanCollide = false
+        end
+
+    end
+end)
+
+--==================================================
+-- INVISIBLE
+--==================================================
+
+RunService.RenderStepped:Connect(function()
+
+    if not Character then
+        return
+    end
+
+    for _, Object in ipairs(
+        Character:GetDescendants()
+    ) do
+
+        if Object:IsA("BasePart") then
+
+            Object.LocalTransparencyModifier =
+                InvisibleEnabled and 1 or 0
+
+        elseif Object:IsA("Decal") then
+
+            Object.Transparency =
+                InvisibleEnabled and 1 or 0
+
+        end
+
+    end
+end)
+
+--==================================================
+-- INFINITE JUMP
+--==================================================
+
+UIS.JumpRequest:Connect(function()
+
+    if not InfiniteJumpEnabled then
+        return
+    end
+
+    local Char =
+        LocalPlayer.Character
+
+    if not Char then
+        return
+    end
+
+    local Hum =
+        Char:FindFirstChildOfClass(
+            "Humanoid"
+        )
+
+    if Hum and Hum.Health > 0 then
+
+        Hum:ChangeState(
+            Enum.HumanoidStateType.Jumping
+        )
+
+    end
+end)
+
+--==================================================
+-- MISC
+--==================================================
+
+CreateLabel(
+    MiscPage,
+    "PLAYER"
+)
+
+CreateToggle(
+    MiscPage,
+    "PLAYER HEALTH ESP",
+    false,
+    function(Value)
+        HealthESPEnabled = Value
+    end
+)
+
+CreateToggle(
+    MiscPage,
+    "CUSTOM GRAVITY",
+    false,
+    function(Value)
+
+        GravityEnabled = Value
+
+        if Value then
+            workspace.Gravity =
+                GravityValue
+        else
+            workspace.Gravity =
+                196.2
+        end
+
+    end
+)
+
+CreateSlider(
+    MiscPage,
+    "GRAVITY",
+    0,
+    300,
+    196,
+    function(Value)
+
+        GravityValue = Value
+
+        if GravityEnabled then
+            workspace.Gravity =
+                GravityValue
+        end
+
+    end
+)
+
+CreateToggle(
+    MiscPage,
+    "CUSTOM FOV",
+    false,
+    function(Value)
+
+        CustomFOVEnabled = Value
+
+        local Camera =
+            workspace.CurrentCamera
+
+        if Camera then
+
+            if Value then
+                Camera.FieldOfView =
+                    CustomFOV
+            else
+                Camera.FieldOfView =
+                    70
+            end
+
+        end
+    end
+)
+
+CreateSlider(
+    MiscPage,
+    "FIELD OF VIEW",
+    40,
+    120,
+    70,
+    function(Value)
+
+        CustomFOV = Value
+
+        if CustomFOVEnabled then
+
+            local Camera =
+                workspace.CurrentCamera
+
+            if Camera then
+                Camera.FieldOfView =
+                    CustomFOV
+            end
+
+        end
+
+    end
+)
+
+local DiscordButton =
+    Instance.new("TextButton")
+
+DiscordButton.Size =
+    UDim2.new(1, -4, 0, 34)
+
+DiscordButton.BackgroundColor3 =
+    ButtonColor
+
+DiscordButton.BorderSizePixel = 0
+
+DiscordButton.Text =
+    "COPY DISCORD"
+
+DiscordButton.TextColor3 =
+    TextColor
+
+DiscordButton.TextSize = 11
+
+DiscordButton.Font =
+    Enum.Font.GothamSemibold
+
+DiscordButton.AutoButtonColor =
+    false
+
+DiscordButton.ZIndex = 12
+
+DiscordButton.Parent =
+    MiscPage
+
+local DiscordCorner =
+    Instance.new("UICorner")
+
+DiscordCorner.CornerRadius =
+    UDim.new(0, 6)
+
+DiscordCorner.Parent =
+    DiscordButton
+
+DiscordButton.MouseButton1Click:Connect(
+    function()
+
+        if setclipboard then
+
+            pcall(function()
+                setclipboard(
+                    "discord.gg/BuWsUVTnt"
+                )
+            end)
+
+        end
+
+        DiscordButton.Text =
+            "COPIED"
+
+        task.delay(
+            1.2,
+            function()
+
+                if DiscordButton then
+                    DiscordButton.Text =
+                        "COPY DISCORD"
+                end
+
+            end
+        )
+    end
+)
+
+--==================================================
+-- HEALTH ESP
+--==================================================
+
+local ESPObjects = {}
+
+local function RemoveESP(Player)
+
+    if ESPObjects[Player] then
+
+        for _, Object in ipairs(
+            ESPObjects[Player]
+        ) do
+
+            if Object
+                and Object.Parent then
+
+                Object:Destroy()
+
+            end
+        end
+
+        ESPObjects[Player] = nil
+    end
+end
+
+local function CreateHealthESP(
+    Player,
+    CharacterModel
+)
+
+    RemoveESP(Player)
+
+    if not HealthESPEnabled then
+        return
+    end
+
+    local Head =
+        CharacterModel:FindFirstChild(
+            "Head"
+        )
+
+    local Hum =
+        CharacterModel:FindFirstChildOfClass(
+            "Humanoid"
+        )
+
+    if not Head or not Hum then
+        return
+    end
+
+    local Objects = {}
+
+    local Billboard =
+        Instance.new("BillboardGui")
+
+    Billboard.Name =
+        "PICKA_Health"
+
+    Billboard.Adornee =
+        Head
+
+    Billboard.Size =
+        UDim2.fromOffset(120, 25)
+
+    Billboard.StudsOffset =
+        Vector3.new(0, 3, 0)
+
+    Billboard.AlwaysOnTop =
+        true
+
+    Billboard.Parent =
+        Head
+
+    local Label =
+        Instance.new("TextLabel")
+
+    Label.Size =
+        UDim2.fromScale(1, 1)
+
+    Label.BackgroundTransparency =
+        1
+
+    Label.Font =
+        Enum.Font.GothamBold
+
+    Label.TextSize =
+        11
+
+    Label.TextStrokeTransparency =
+        0.5
+
+    Label.Parent =
+        Billboard
+
+    local Highlight =
+        Instance.new("Highlight")
+
+    Highlight.Name =
+        "PICKA_HealthHighlight"
+
+    Highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+
+    Highlight.FillTransparency =
+        0.65
+
+    Highlight.OutlineTransparency =
+        0
+
+    Highlight.Parent =
+        CharacterModel
+
+    table.insert(
+        Objects,
+        Billboard
+    )
+
+    table.insert(
+        Objects,
+        Highlight
+    )
+
+    ESPObjects[Player] =
+        Objects
+
+    local Connection
+
+    Connection =
+        RunService.RenderStepped:Connect(
+            function()
+
+                if not HealthESPEnabled
+                    or not CharacterModel.Parent
+                    or not Hum.Parent then
+
+                    if Connection then
+                        Connection:Disconnect()
+                    end
+
+                    return
+                end
+
+                local MaxHealth =
+                    math.max(
+                        Hum.MaxHealth,
+                        1
+                    )
+
+                local Health =
+                    math.max(
+                        Hum.Health,
+                        0
+                    )
+
+                local Percent =
+                    Health / MaxHealth
+
+                Label.Text =
+                    "HP: "
+                    .. math.floor(Health)
+                    .. " / "
+                    .. math.floor(MaxHealth)
+
+                local CurrentColor
+
+                if Percent > 0.6 then
+
+                    CurrentColor =
+                        Color3.fromRGB(
+                            80,
+                            255,
+                            100
+                        )
+
+                elseif Percent > 0.3 then
+
+                    CurrentColor =
+                        Color3.fromRGB(
+                            255,
+                            220,
+                            70
+                        )
+
+                else
+
+                    CurrentColor =
+                        Color3.fromRGB(
+                            255,
+                            70,
+                            70
+                        )
+
+                end
+
+                Label.TextColor3 =
+                    CurrentColor
+
+                Highlight.FillColor =
+                    CurrentColor
+
+                Highlight.OutlineColor =
+                    CurrentColor
+
+            end
+        )
+
+    table.insert(
+        Objects,
+        Connection
+    )
+end
+
+local function SetupESPPlayer(Player)
+
+    if Player == LocalPlayer then
+        return
+    end
+
+    Player.CharacterAdded:Connect(
+        function(Char)
+
+            task.wait(0.5)
+
+            if HealthESPEnabled then
+
+                CreateHealthESP(
+                    Player,
+                    Char
+                )
+
+            end
+
+        end
+    )
+
+    if Player.Character
+        and HealthESPEnabled then
+
+        CreateHealthESP(
+            Player,
+            Player.Character
+        )
+
+    end
+end
+
+for _, Player in ipairs(
+    Players:GetPlayers()
+) do
+
+    SetupESPPlayer(Player)
+
+end
+
+Players.PlayerAdded:Connect(
+    function(Player)
+        SetupESPPlayer(Player)
+    end
+)
+
+Players.PlayerRemoving:Connect(
+    function(Player)
+        RemoveESP(Player)
+    end
+)
+
+task.spawn(function()
+
+    while task.wait(0.5) do
+
+        if HealthESPEnabled then
+
+            for _, Player in ipairs(
+                Players:GetPlayers()
+            ) do
+
+                if Player ~= LocalPlayer
+                    and Player.Character then
+
+                    local Existing =
+                        ESPObjects[Player]
+
+                    if not Existing then
+
+                        CreateHealthESP(
+                            Player,
+                            Player.Character
+                        )
+
+                    end
+                end
+            end
+
+        else
+
+            for Player in pairs(
+                ESPObjects
+            ) do
+
+                RemoveESP(Player)
+
+            end
+        end
+    end
+end)
+
+--==================================================
+-- TAB DEFAULT
+--==================================================
+
+for Name, Page in pairs(Tabs) do
+    Page.Visible = false
+end
+
+CombatPage.Visible = true
+TabButtons["COMBAT"].BackgroundColor3 =
+    ThemeColor
+
+--==================================================
+-- CLOSE
+--==================================================
+
+Close.MouseButton1Click:Connect(
+    function()
+
+        Main.Visible = false
+
+        if FOVCircle then
+            FOVCircle.Visible = false
+        end
+
+    end
+)
+
+--==================================================
+-- RESPONSIVE WINDOW
+--==================================================
+
+local function KeepWindowInsideScreen()
+
+    local Viewport =
+        GetViewport()
+
+    local Width, Height =
+        ClampWindowSize(
+            Main.AbsoluteSize.X,
+            Main.AbsoluteSize.Y
+        )
+
+    Main.Size =
+        UDim2.fromOffset(
+            Width,
+            Height
+        )
+
+    local HalfW =
+        Width / 2
+
+    local HalfH =
+        Height / 2
+
+    local CurrentX =
+        Main.AbsolutePosition.X
+        + HalfW
+
+    local CurrentY =
+        Main.AbsolutePosition.Y
+        + HalfH
+
+    local MinX =
+        HalfW + 5
+
+    local MaxX =
+        Viewport.X
+        - HalfW
+        - 5
+
+    local MinY =
+        HalfH + 5
+
+    local MaxY =
+        Viewport.Y
+        - HalfH
+        - 5
+
+    if MaxX < MinX then
+        MaxX = MinX
+    end
+
+    if MaxY < MinY then
+        MaxY = MinY
+    end
+
+    local X =
+        math.clamp(
+            CurrentX,
+            MinX,
+            MaxX
+        )
+
+    local Y =
+        math.clamp(
+            CurrentY,
+            MinY,
+            MaxY
+        )
+
+    Main.Position =
+        UDim2.fromOffset(
+            X,
+            Y
+        )
+end
+
+local Camera =
+    workspace.CurrentCamera
+
+if Camera then
+
+    Camera:GetPropertyChangedSignal(
+        "ViewportSize"
+    ):Connect(
+        function()
+            KeepWindowInsideScreen()
+        end
+    )
+
+end
+
+task.defer(function()
+
+    local Viewport =
+        GetViewport()
+
+    local Width =
+        math.clamp(
+            Viewport.X * 0.68,
+            300,
+            380
+        )
+
+    local Height =
+        math.clamp(
+            Viewport.Y * 0.56,
+            320,
+            440
+        )
+
+    Width, Height =
+        ClampWindowSize(
+            Width,
+            Height
+        )
+
+    Main.Size =
+        UDim2.fromOffset(
+            Width,
+            Height
+        )
+
+    Main.Position =
+        UDim2.new(
+            0.5,
+            0,
+            0.5,
+            0
+        )
+
+end)
+
+--==================================================
+-- INITIAL FOV
+--==================================================
+
+UpdateFOVCircle()
+
+--==================================================
+-- FINAL CROSSHAIR STATE
+--==================================================
+
+Crosshair.Visible =
+    CrosshairEnabled
+
+print(
+    "PICKA'S HUB loaded successfully."
+)

@@ -1,0 +1,1450 @@
+
+╔══════════════════════════════════════════════╗
+║                                                      ║
+║                ⚡  PICKAS HUB   ⚡                   ║
+║           discord : discord.gg/EZVwVe5g4t            ║
+║                                                      ║
+╚═════════════════════════════════════━━═══════╝
+
+
+
+-- PICKAS HUB
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local TeleportService = game:GetService("TeleportService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+-- Library
+loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/PickasHub/Picka-s-Hub-Library-Source/refs/heads/main/Settings"
+))()
+
+local FuncsV3 = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/PickasHub/Picka-s-Hub-Library-Source/refs/heads/main/Configure"
+))()
+
+local Library = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/PickasHub/Picka-s-Hub-Library-Source/refs/heads/main/Main%20Library"
+))():CreateWindow({
+    ["Tab Width"] = 160,
+    ["Description"] = "discord.gg/s6vSfnMXm",
+    ["Title"] = "Picka's Hub"
+})
+
+local MainTab = Library:CreateTab({
+    ["Name"] = "Main",
+    ["Icon"] = "rbxassetid://10723407389"
+})
+
+local LocalTab = Library:CreateTab({
+    ["Name"] = "Local Player",
+    ["Icon"] = "rbxassetid://10723407389"
+})
+
+local MiscTab = Library:CreateTab({
+    ["Name"] = "Misc",
+    ["Icon"] = "rbxassetid://10723407389"
+})
+
+local SettingsTab = Library:CreateTab({
+    ["Name"] = "Settings",
+    ["Icon"] = "rbxassetid://10723407389"
+})
+
+local CombatSection = MainTab:AddSection("Combat", true)
+local MovementSection = LocalTab:AddSection("Movement", true)
+local CharacterSection = LocalTab:AddSection("Character", true)
+local ESPSection = MiscTab:AddSection("Player ESP", true)
+local UtilitySection = MiscTab:AddSection("Utility", true)
+local ConfigSection = SettingsTab:AddSection("Configuration", true)
+
+local State = {
+    Aimbot = false,
+    TargetSelection = "Head",
+    Smoothness = 35,
+
+    FOVCircle = false,
+    FOVRadius = 150,
+    FOVTargeting = true,
+    TeamCheck = true,
+
+    Crosshair = false,
+    TargetSnapline = false,
+
+    WalkSpeed = 16,
+    InfiniteJump = false,
+    JumpPower = 50,
+    Invisible = false,
+    NoClip = false,
+    Gravity = 196.2,
+
+    PlayerESP = false,
+
+    ESPSelection = {
+        ["Distance"] = false,
+        ["Health Bar"] = false,
+        ["Names"] = false,
+        ["Chams"] = false,
+        ["Snaplines"] = false
+    },
+
+    FullBright = false,
+    NoFog = false,
+    CustomFOV = 70,
+    AntiLag = false,
+    FPSBoost = false,
+    AntiAFK = false
+}
+
+local ESPObjects = {}
+local ESPConnections = {}
+
+local AimbotConnection
+local ESPConnection
+local SnaplineGui
+local FOVGui
+local CrosshairGui
+
+-- Helpers
+
+local function getCharacter(player)
+    return player and player.Character
+end
+
+local function getHumanoid(player)
+    local character = getCharacter(player)
+
+    if not character then
+        return nil
+    end
+
+    return character:FindFirstChildOfClass("Humanoid")
+end
+
+local function isAlive(player)
+    local humanoid = getHumanoid(player)
+
+    return humanoid
+        and humanoid.Health > 0
+end
+
+-- Enemy detection
+
+local function isEnemy(player)
+    if not player or player == LocalPlayer then
+        return false
+    end
+
+    local humanoid = getHumanoid(player)
+
+    if not humanoid or humanoid.Health <= 0 then
+        return false
+    end
+
+    if State.TeamCheck then
+        local myTeam = LocalPlayer.Team
+        local targetTeam = player.Team
+
+        if myTeam ~= nil
+            and targetTeam ~= nil
+            and myTeam == targetTeam then
+
+            return false
+        end
+    end
+
+    return true
+end
+
+-- Target part
+
+local function getTargetPart(character)
+    if not character then
+        return nil
+    end
+
+    if State.TargetSelection == "Head" then
+        return character:FindFirstChild("Head")
+
+    elseif State.TargetSelection == "Body" then
+        return character:FindFirstChild("HumanoidRootPart")
+
+    elseif State.TargetSelection == "Foot" then
+        return character:FindFirstChild("LeftFoot")
+            or character:FindFirstChild("RightFoot")
+            or character:FindFirstChild("Left Leg")
+            or character:FindFirstChild("Right Leg")
+    end
+
+    return character:FindFirstChild("Head")
+end
+
+-- Closest enemy
+
+local function getClosestTarget()
+    local viewport = Camera.ViewportSize
+
+    local center = Vector2.new(
+        viewport.X / 2,
+        viewport.Y / 2
+    )
+
+    local closestPlayer = nil
+    local closestPart = nil
+    local closestDistance = math.huge
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if isEnemy(player) then
+            local character = player.Character
+            local part = getTargetPart(character)
+
+            if part then
+                local screenPosition, visible =
+                    Camera:WorldToViewportPoint(part.Position)
+
+                if visible and screenPosition.Z > 0 then
+                    local screenPoint = Vector2.new(
+                        screenPosition.X,
+                        screenPosition.Y
+                    )
+
+                    local distance =
+                        (screenPoint - center).Magnitude
+
+                    local allowed =
+                        not State.FOVTargeting
+                        or distance <= State.FOVRadius
+
+                    if allowed and distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = player
+                        closestPart = part
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer, closestPart
+end
+
+-- FOV Circle
+
+FOVGui = Instance.new("ScreenGui")
+FOVGui.Name = "PickaFOV"
+FOVGui.ResetOnSpawn = false
+FOVGui.IgnoreGuiInset = true
+FOVGui.Parent = PlayerGui
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.BorderSizePixel = 0
+FOVCircle.Parent = FOVGui
+
+local FOVStroke = Instance.new("UIStroke")
+FOVStroke.Color = Color3.fromRGB(157, 0, 255)
+FOVStroke.Thickness = 1.5
+FOVStroke.Parent = FOVCircle
+
+local FOVCorner = Instance.new("UICorner")
+FOVCorner.CornerRadius = UDim.new(1, 0)
+FOVCorner.Parent = FOVCircle
+
+local function updateFOV()
+    local diameter = math.clamp(
+        State.FOVRadius * 2,
+        20,
+        1000
+    )
+
+    FOVCircle.Size = UDim2.fromOffset(
+        diameter,
+        diameter
+    )
+
+    FOVCircle.Position = UDim2.fromScale(
+        0.5,
+        0.5
+    )
+
+    FOVCircle.Visible = State.FOVCircle
+end
+
+updateFOV()
+
+-- Crosshair
+
+local function createCrosshair()
+    if CrosshairGui then
+        CrosshairGui:Destroy()
+    end
+
+    CrosshairGui = Instance.new("ScreenGui")
+    CrosshairGui.Name = "PickaCrosshair"
+    CrosshairGui.ResetOnSpawn = false
+    CrosshairGui.IgnoreGuiInset = true
+    CrosshairGui.Parent = PlayerGui
+
+    local holder = Instance.new("Frame")
+    holder.Name = "Holder"
+    holder.AnchorPoint = Vector2.new(0.5, 0.5)
+    holder.Position = UDim2.fromScale(0.5, 0.5)
+    holder.Size = UDim2.fromOffset(18, 18)
+    holder.BackgroundTransparency = 1
+    holder.Parent = CrosshairGui
+
+    local function makeLine(size, position)
+        local line = Instance.new("Frame")
+        line.Size = size
+        line.Position = position
+        line.BorderSizePixel = 0
+        line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        line.Parent = holder
+    end
+
+    makeLine(
+        UDim2.fromOffset(2, 6),
+        UDim2.fromOffset(8, 0)
+    )
+
+    makeLine(
+        UDim2.fromOffset(2, 6),
+        UDim2.fromOffset(8, 12)
+    )
+
+    makeLine(
+        UDim2.fromOffset(6, 2),
+        UDim2.fromOffset(0, 8)
+    )
+
+    makeLine(
+        UDim2.fromOffset(6, 2),
+        UDim2.fromOffset(12, 8)
+    )
+end
+
+local function updateCrosshair()
+    if not CrosshairGui then
+        createCrosshair()
+    end
+
+    CrosshairGui.Enabled = State.Crosshair
+end
+
+createCrosshair()
+updateCrosshair()
+
+-- Aim Assist
+-- This is intended for your own game's LocalScript.
+
+local function startAimbot()
+    if AimbotConnection then
+        AimbotConnection:Disconnect()
+    end
+
+    AimbotConnection =
+        RunService.RenderStepped:Connect(function(deltaTime)
+
+            if not State.Aimbot then
+                return
+            end
+
+            local targetPlayer, targetPart =
+                getClosestTarget()
+
+            if not targetPlayer or not targetPart then
+                return
+            end
+
+            local targetPosition =
+                targetPart.Position
+
+            local cameraPosition =
+                Camera.CFrame.Position
+
+            local desired =
+                CFrame.lookAt(
+                    cameraPosition,
+                    targetPosition
+                )
+
+            local smoothness =
+                math.clamp(
+                    State.Smoothness,
+                    1,
+                    100
+                )
+
+            local followSpeed =
+                math.clamp(
+                    (101 - smoothness) * 0.08,
+                    0.03,
+                    8
+                )
+
+            local alpha =
+                1 - math.exp(
+                    -followSpeed * deltaTime * 60
+                )
+
+            Camera.CFrame =
+                Camera.CFrame:Lerp(
+                    desired,
+                    alpha
+                )
+        end)
+end
+
+startAimbot()
+
+-- Target Snapline
+
+local function createSnaplineGui()
+    if SnaplineGui then
+        SnaplineGui:Destroy()
+    end
+
+    SnaplineGui = Instance.new("ScreenGui")
+    SnaplineGui.Name = "PickaSnaplines"
+    SnaplineGui.ResetOnSpawn = false
+    SnaplineGui.IgnoreGuiInset = true
+    SnaplineGui.Parent = PlayerGui
+end
+
+createSnaplineGui()
+
+local function clearSnaplines()
+    if not SnaplineGui then
+        return
+    end
+
+    for _, object in ipairs(SnaplineGui:GetChildren()) do
+        object:Destroy()
+    end
+end
+
+local function updateSnaplines()
+    clearSnaplines()
+
+    if not State.TargetSnapline then
+        return
+    end
+
+    local center = Vector2.new(
+        Camera.ViewportSize.X / 2,
+        Camera.ViewportSize.Y / 2
+    )
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if isEnemy(player) then
+            local part = getTargetPart(player.Character)
+
+            if part then
+                local position, visible =
+                    Camera:WorldToViewportPoint(
+                        part.Position
+                    )
+
+                if visible and position.Z > 0 then
+                    local target =
+                        Vector2.new(
+                            position.X,
+                            position.Y
+                        )
+
+                    local difference =
+                        target - center
+
+                    local length =
+                        difference.Magnitude
+
+                    local line =
+                        Instance.new("Frame")
+
+                    line.Name =
+                        player.Name
+
+                    line.AnchorPoint =
+                        Vector2.new(0.5, 0.5)
+
+                    line.BackgroundColor3 =
+                        Color3.fromRGB(157, 0, 255)
+
+                    line.BorderSizePixel = 0
+
+                    line.Size =
+                        UDim2.fromOffset(
+                            length,
+                            1
+                        )
+
+                    line.Position =
+                        UDim2.fromOffset(
+                            (center.X + target.X) / 2,
+                            (center.Y + target.Y) / 2
+                        )
+
+                    line.Rotation =
+                        math.deg(
+                            math.atan2(
+                                difference.Y,
+                                difference.X
+                            )
+                        )
+
+                    line.Parent = SnaplineGui
+                end
+            end
+        end
+    end
+end
+
+-- ESP
+
+local function removeESP(player)
+    local data = ESPObjects[player]
+
+    if not data then
+        return
+    end
+
+    if data.Gui then
+        data.Gui:Destroy()
+    end
+
+    if data.Highlight then
+        data.Highlight:Destroy()
+    end
+
+    ESPObjects[player] = nil
+end
+
+local function createESP(player)
+    if player == LocalPlayer then
+        return
+    end
+
+    removeESP(player)
+
+    local character = player.Character
+
+    if not character then
+        return
+    end
+
+    local humanoid =
+        character:FindFirstChildOfClass("Humanoid")
+
+    local root =
+        character:FindFirstChild("HumanoidRootPart")
+
+    if not humanoid or not root then
+        return
+    end
+
+    local gui =
+        Instance.new("BillboardGui")
+
+    gui.Name = "PickaESP"
+    gui.Adornee = root
+    gui.Size = UDim2.fromOffset(150, 60)
+    gui.StudsOffset = Vector3.new(0, 2.8, 0)
+    gui.AlwaysOnTop = true
+    gui.Enabled = false
+    gui.Parent = root
+
+    local holder =
+        Instance.new("Frame")
+
+    holder.Size =
+        UDim2.fromScale(1, 1)
+
+    holder.BackgroundTransparency = 1
+    holder.Parent = gui
+
+    local nameLabel =
+        Instance.new("TextLabel")
+
+    nameLabel.Size =
+        UDim2.new(1, 0, 0, 17)
+
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextScaled = true
+    nameLabel.Text = player.Name
+    nameLabel.Parent = holder
+
+    local distanceLabel =
+        Instance.new("TextLabel")
+
+    distanceLabel.Position =
+        UDim2.fromOffset(0, 17)
+
+    distanceLabel.Size =
+        UDim2.new(1, 0, 0, 15)
+
+    distanceLabel.BackgroundTransparency = 1
+
+    distanceLabel.TextColor3 =
+        Color3.fromRGB(220, 220, 220)
+
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.TextScaled = true
+    distanceLabel.Parent = holder
+
+    -- Small Health Bar
+
+    local healthBack =
+        Instance.new("Frame")
+
+    healthBack.Name = "HealthBack"
+
+    healthBack.Position =
+        UDim2.fromOffset(25, 39)
+
+    healthBack.Size =
+        UDim2.new(1, -50, 0, 4)
+
+    healthBack.BackgroundColor3 =
+        Color3.fromRGB(35, 35, 35)
+
+    healthBack.BorderSizePixel = 0
+    healthBack.Parent = holder
+
+    local healthBackCorner =
+        Instance.new("UICorner")
+
+    healthBackCorner.CornerRadius =
+        UDim.new(1, 0)
+
+    healthBackCorner.Parent =
+        healthBack
+
+    local healthFill =
+        Instance.new("Frame")
+
+    healthFill.Name = "HealthFill"
+
+    healthFill.Size =
+        UDim2.fromScale(1, 1)
+
+    healthFill.BackgroundColor3 =
+        Color3.fromRGB(0, 255, 80)
+
+    healthFill.BorderSizePixel = 0
+    healthFill.Parent = healthBack
+
+    local healthFillCorner =
+        Instance.new("UICorner")
+
+    healthFillCorner.CornerRadius =
+        UDim.new(1, 0)
+
+    healthFillCorner.Parent =
+        healthFill
+
+    local highlight =
+        Instance.new("Highlight")
+
+    highlight.Name =
+        "PickaChams"
+
+    highlight.Adornee =
+        character
+
+    highlight.FillColor =
+        Color3.fromRGB(157, 0, 255)
+
+    highlight.OutlineColor =
+        Color3.fromRGB(255, 255, 255)
+
+    highlight.FillTransparency = 0.65
+    highlight.OutlineTransparency = 0
+
+    highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+
+    highlight.Enabled = false
+    highlight.Parent = character
+
+    ESPObjects[player] = {
+        Gui = gui,
+        Name = nameLabel,
+        Distance = distanceLabel,
+        HealthBack = healthBack,
+        HealthFill = healthFill,
+        Highlight = highlight
+    }
+end
+
+local function updateESP()
+    for player, data in pairs(ESPObjects) do
+
+        if not State.PlayerESP then
+            data.Gui.Enabled = false
+            data.Highlight.Enabled = false
+            continue
+        end
+
+        local character =
+            player.Character
+
+        local humanoid =
+            character
+            and character:FindFirstChildOfClass("Humanoid")
+
+        local root =
+            character
+            and character:FindFirstChild("HumanoidRootPart")
+
+        if not character
+            or not humanoid
+            or not root
+            or humanoid.Health <= 0 then
+
+            data.Gui.Enabled = false
+            data.Highlight.Enabled = false
+            continue
+        end
+
+        local selected =
+            State.ESPSelection
+
+        data.Name.Visible =
+            selected["Names"]
+
+        data.Distance.Visible =
+            selected["Distance"]
+
+        data.HealthBack.Visible =
+            selected["Health Bar"]
+
+        data.Gui.Enabled =
+            selected["Names"]
+            or selected["Distance"]
+            or selected["Health Bar"]
+
+        data.Highlight.Enabled =
+            selected["Chams"]
+
+        if selected["Distance"] then
+            local myCharacter =
+                LocalPlayer.Character
+
+            local myRoot =
+                myCharacter
+                and myCharacter:FindFirstChild(
+                    "HumanoidRootPart"
+                )
+
+            if myRoot then
+                local distance =
+                    (
+                        myRoot.Position
+                        - root.Position
+                    ).Magnitude
+
+                data.Distance.Text =
+                    math.floor(distance)
+                    .. " studs"
+            end
+        end
+
+        if selected["Health Bar"] then
+            local maxHealth =
+                math.max(
+                    humanoid.MaxHealth,
+                    1
+                )
+
+            local healthPercent =
+                math.clamp(
+                    humanoid.Health / maxHealth,
+                    0,
+                    1
+                )
+
+            data.HealthFill.Size =
+                UDim2.fromScale(
+                    healthPercent,
+                    1
+                )
+
+            data.HealthFill.BackgroundColor3 =
+                Color3.fromRGB(
+                    0,
+                    255,
+                    80
+                )
+        end
+    end
+end
+
+local function setupESPPlayer(player)
+    if player == LocalPlayer then
+        return
+    end
+
+    if ESPConnections[player] then
+        for _, connection in ipairs(
+            ESPConnections[player]
+        ) do
+            connection:Disconnect()
+        end
+    end
+
+    ESPConnections[player] = {}
+
+    table.insert(
+        ESPConnections[player],
+        player.CharacterAdded:Connect(function()
+            task.wait(0.5)
+
+            if State.PlayerESP then
+                createESP(player)
+            end
+        end)
+    )
+
+    if player.Character and State.PlayerESP then
+        createESP(player)
+    end
+end
+
+for _, player in ipairs(
+    Players:GetPlayers()
+) do
+    setupESPPlayer(player)
+end
+
+Players.PlayerAdded:Connect(function(player)
+    setupESPPlayer(player)
+
+    task.wait(0.5)
+
+    if State.PlayerESP then
+        createESP(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    removeESP(player)
+
+    if ESPConnections[player] then
+        for _, connection in ipairs(
+            ESPConnections[player]
+        ) do
+            connection:Disconnect()
+        end
+
+        ESPConnections[player] = nil
+    end
+end)
+
+-- MAIN
+
+FuncsV3:Toggle(
+    CombatSection,
+    "Aimbot",
+    "Aim assist for enemy targets",
+    false,
+    function(value)
+        State.Aimbot = value
+    end
+)
+
+FuncsV3:Dropdown(
+    CombatSection,
+    "Target Selection",
+    "Choose target body part",
+    false,
+    {
+        "Head",
+        "Body",
+        "Foot"
+    },
+    "Head",
+    function(value)
+        State.TargetSelection = value
+    end
+)
+
+FuncsV3:Slider(
+    CombatSection,
+    "Smoothness",
+    "Aim movement smoothness",
+    1,
+    100,
+    35,
+    function(value)
+        State.Smoothness = value
+    end
+)
+
+FuncsV3:Toggle(
+    CombatSection,
+    "FOV Circle",
+    "Show the FOV circle",
+    false,
+    function(value)
+        State.FOVCircle = value
+        updateFOV()
+    end
+)
+
+FuncsV3:Slider(
+    CombatSection,
+    "FOV Radius",
+    "Change FOV radius",
+    25,
+    500,
+    150,
+    function(value)
+        State.FOVRadius = value
+        updateFOV()
+    end
+)
+
+FuncsV3:Toggle(
+    CombatSection,
+    "Aim Keybind",
+    "Enable automatic aim assist",
+    false,
+    function(value)
+        State.Aimbot = value
+    end
+)
+
+FuncsV3:Toggle(
+    CombatSection,
+    "Crosshair",
+    "Show center crosshair",
+    false,
+    function(value)
+        State.Crosshair = value
+        updateCrosshair()
+    end
+)
+
+FuncsV3:Toggle(
+    CombatSection,
+    "FOV Targeting",
+    "Target enemies inside FOV",
+    true,
+    function(value)
+        State.FOVTargeting = value
+    end
+)
+
+FuncsV3:Toggle(
+    CombatSection,
+    "Team Check",
+    "Ignore teammates",
+    true,
+    function(value)
+        State.TeamCheck = value
+    end
+)
+
+FuncsV3:Toggle(
+    CombatSection,
+    "Target Snapline",
+    "Show lines toward enemies",
+    false,
+    function(value)
+        State.TargetSnapline = value
+
+        if not value then
+            clearSnaplines()
+        end
+    end
+)
+
+-- LOCAL PLAYER
+
+FuncsV3:Textbox(
+    MovementSection,
+    "WalkSpeed",
+    "Set walk speed",
+    "16",
+    function(value)
+        local number = tonumber(value)
+
+        if number then
+            State.WalkSpeed =
+                math.clamp(number, 0, 500)
+
+            local humanoid =
+                getHumanoid(LocalPlayer)
+
+            if humanoid then
+                humanoid.WalkSpeed =
+                    State.WalkSpeed
+            end
+        end
+    end
+)
+
+FuncsV3:Toggle(
+    MovementSection,
+    "Infinite Jump",
+    "Jump continuously",
+    false,
+    function(value)
+        State.InfiniteJump = value
+    end
+)
+
+FuncsV3:Textbox(
+    MovementSection,
+    "Jump Power",
+    "Set jump power",
+    "50",
+    function(value)
+        local number = tonumber(value)
+
+        if number then
+            State.JumpPower =
+                math.clamp(number, 0, 500)
+
+            local humanoid =
+                getHumanoid(LocalPlayer)
+
+            if humanoid then
+                humanoid.UseJumpPower = true
+                humanoid.JumpPower =
+                    State.JumpPower
+            end
+        end
+    end
+)
+
+FuncsV3:Toggle(
+    CharacterSection,
+    "Invisible",
+    "Hide your character locally",
+    false,
+    function(value)
+        State.Invisible = value
+
+        local character =
+            LocalPlayer.Character
+
+        if character then
+            for _, object in ipairs(
+                character:GetDescendants()
+            ) do
+                if object:IsA("BasePart") then
+                    object.LocalTransparencyModifier =
+                        value and 1 or 0
+                end
+            end
+        end
+    end
+)
+
+FuncsV3:Toggle(
+    CharacterSection,
+    "NoClip",
+    "Disable character collisions",
+    false,
+    function(value)
+        State.NoClip = value
+    end
+)
+
+FuncsV3:Slider(
+    CharacterSection,
+    "Custom Gravity",
+    "Set gravity",
+    0,
+    500,
+    196,
+    function(value)
+        State.Gravity = value
+        workspace.Gravity = value
+    end
+)
+
+-- MISC
+
+FuncsV3:Toggle(
+    ESPSection,
+    "Player ESP",
+    "Enable player ESP",
+    false,
+    function(value)
+        State.PlayerESP = value
+
+        if value then
+            for _, player in ipairs(
+                Players:GetPlayers()
+            ) do
+                if player ~= LocalPlayer then
+                    createESP(player)
+                end
+            end
+        end
+    end
+)
+
+FuncsV3:Dropdown(
+    ESPSection,
+    "ESP Selection",
+    "Choose ESP features",
+    true,
+    {
+        "Distance",
+        "Health Bar",
+        "Names",
+        "Chams",
+        "Snaplines"
+    },
+    {},
+    function(value)
+
+        State.ESPSelection = {
+            ["Distance"] = false,
+            ["Health Bar"] = false,
+            ["Names"] = false,
+            ["Chams"] = false,
+            ["Snaplines"] = false
+        }
+
+        if type(value) == "table" then
+            for _, option in ipairs(value) do
+                State.ESPSelection[option] = true
+            end
+        elseif type(value) == "string" then
+            State.ESPSelection[value] = true
+        end
+    end
+)
+
+-- UTILITY
+
+FuncsV3:Toggle(
+    UtilitySection,
+    "Full Bright",
+    "Increase brightness",
+    false,
+    function(value)
+        State.FullBright = value
+
+        if value then
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            Lighting.GlobalShadows = false
+            Lighting.FogEnd = 100000
+        else
+            Lighting.Brightness = 1
+            Lighting.GlobalShadows = true
+        end
+    end
+)
+
+FuncsV3:Toggle(
+    UtilitySection,
+    "No Fog",
+    "Remove fog",
+    false,
+    function(value)
+        State.NoFog = value
+
+        if value then
+            Lighting.FogStart = 0
+            Lighting.FogEnd = 100000
+        end
+    end
+)
+
+FuncsV3:Slider(
+    UtilitySection,
+    "Custom FOV",
+    "Change camera FOV",
+    40,
+    120,
+    70,
+    function(value)
+        State.CustomFOV = value
+        Camera.FieldOfView = value
+    end
+)
+
+FuncsV3:Toggle(
+    UtilitySection,
+    "Anti Lag",
+    "Disable local effects",
+    false,
+    function(value)
+        State.AntiLag = value
+
+        if value then
+            for _, object in ipairs(
+                workspace:GetDescendants()
+            ) do
+                if object:IsA("ParticleEmitter")
+                    or object:IsA("Trail")
+                    or object:IsA("Beam") then
+
+                    object.Enabled = false
+                end
+            end
+        end
+    end
+)
+
+FuncsV3:Toggle(
+    UtilitySection,
+    "FPS Boost",
+    "Reduce visual effects",
+    false,
+    function(value)
+        State.FPSBoost = value
+
+        if value then
+            Lighting.GlobalShadows = false
+
+            for _, object in ipairs(
+                workspace:GetDescendants()
+            ) do
+                if object:IsA("ParticleEmitter")
+                    or object:IsA("Trail")
+                    or object:IsA("Beam") then
+
+                    object.Enabled = false
+                end
+            end
+        end
+    end
+)
+
+FuncsV3:Toggle(
+    UtilitySection,
+    "Anti AFK",
+    "Prevent idle kick",
+    false,
+    function(value)
+        State.AntiAFK = value
+    end
+)
+
+FuncsV3:Button(
+    UtilitySection,
+    "Rejoin Server",
+    "Reconnect to current server",
+    function()
+        TeleportService:Teleport(
+            game.PlaceId,
+            LocalPlayer
+        )
+    end
+)
+
+FuncsV3:Button(
+    UtilitySection,
+    "Server Hop",
+    "Reconnect to server",
+    function()
+        TeleportService:Teleport(
+            game.PlaceId,
+            LocalPlayer
+        )
+    end
+)
+
+-- SETTINGS
+
+FuncsV3:Button(
+    ConfigSection,
+    "Save Config",
+    "Save current session settings",
+    function()
+        print("PICKA'S HUB config saved")
+    end
+)
+
+FuncsV3:Button(
+    ConfigSection,
+    "Reset Config",
+    "Reset settings",
+    function()
+        State.Aimbot = false
+        State.FOVCircle = false
+        State.Crosshair = false
+        State.TargetSnapline = false
+        State.PlayerESP = false
+
+        State.ESPSelection = {
+            ["Distance"] = false,
+            ["Health Bar"] = false,
+            ["Names"] = false,
+            ["Chams"] = false,
+            ["Snaplines"] = false
+        }
+
+        updateFOV()
+        updateCrosshair()
+        clearSnaplines()
+    end
+)
+
+FuncsV3:Button(
+    ConfigSection,
+    "Reload ESP",
+    "Rebuild player ESP",
+    function()
+        for _, player in ipairs(
+            Players:GetPlayers()
+        ) do
+            if player ~= LocalPlayer then
+                createESP(player)
+            end
+        end
+    end
+)
+
+-- Infinite Jump
+
+UserInputService.JumpRequest:Connect(function()
+    if not State.InfiniteJump then
+        return
+    end
+
+    local humanoid =
+        getHumanoid(LocalPlayer)
+
+    if humanoid then
+        humanoid:ChangeState(
+            Enum.HumanoidStateType.Jumping
+        )
+    end
+end)
+
+-- Character loop
+
+RunService.Stepped:Connect(function()
+    local character =
+        LocalPlayer.Character
+
+    if not character then
+        return
+    end
+
+    local humanoid =
+        character:FindFirstChildOfClass(
+            "Humanoid"
+        )
+
+    if humanoid then
+        humanoid.WalkSpeed =
+            State.WalkSpeed
+
+        humanoid.UseJumpPower = true
+
+        humanoid.JumpPower =
+            State.JumpPower
+    end
+
+    if State.NoClip then
+        for _, object in ipairs(
+            character:GetDescendants()
+        ) do
+            if object:IsA("BasePart") then
+                object.CanCollide = false
+            end
+        end
+    end
+
+    if State.Invisible then
+        for _, object in ipairs(
+            character:GetDescendants()
+        ) do
+            if object:IsA("BasePart") then
+                object.LocalTransparencyModifier = 1
+            end
+        end
+    end
+end)
+
+-- ESP / Snapline loop
+
+ESPConnection =
+    RunService.RenderStepped:Connect(function()
+        updateESP()
+
+        if State.TargetSnapline then
+            updateSnaplines()
+        else
+            clearSnaplines()
+        end
+    end)
+
+-- Anti AFK
+
+LocalPlayer.Idled:Connect(function()
+    if not State.AntiAFK then
+        return
+    end
+
+    local VirtualUser =
+        game:GetService("VirtualUser")
+
+    VirtualUser:CaptureController()
+
+    VirtualUser:ClickButton2(
+        Vector2.new(
+            Camera.ViewportSize.X / 2,
+            Camera.ViewportSize.Y / 2
+        )
+    )
+end)
+
+-- Respawn
+
+LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait(0.5)
+
+    local humanoid =
+        character:FindFirstChildOfClass(
+            "Humanoid"
+        )
+
+    if humanoid then
+        humanoid.WalkSpeed =
+            State.WalkSpeed
+
+        humanoid.UseJumpPower = true
+
+        humanoid.JumpPower =
+            State.JumpPower
+    end
+
+    if State.Invisible then
+        for _, object in ipairs(
+            character:GetDescendants()
+        ) do
+            if object:IsA("BasePart") then
+                object.LocalTransparencyModifier = 1
+            end
+        end
+    end
+
+    updateFOV()
+    updateCrosshair()
+end)
+
+updateFOV()
+updateCrosshair()
